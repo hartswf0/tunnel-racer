@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tunnel Racing</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body { 
+            margin: 0; 
+            touch-action: none;
+            overflow: hidden;
+            background-color: #000; /* Optional: Set a background color */
+            font-family: Arial, sans-serif;
+        }
+        canvas { 
+            display: block; 
+        }
+        /* HUD Styling */
+        #hud {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 15px;
+            display: flex;
+            gap: 40px;
+            align-items: center;
+            box-shadow: 0 0 10px rgba(255,255,255,0.2);
+        }
+        #speedometer, #distance {
+            text-align: center;
+        }
+        .speed-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #00ff00;
+        }
+        /* Controls Styling */
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            box-shadow: 0 0 10px rgba(255,255,255,0.2);
+        }
+        /* Stats Panel */
+        .stats {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            box-shadow: 0 0 10px rgba(255,255,255,0.2);
+        }
+        /* Arrow Controls */
+        .arrow-controls {
+            position: absolute;
+            bottom: 100px;
+            left: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .steer-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .steer-button {
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .steer-button:hover {
+            background: rgba(255,255,255,0.4);
+        }
+        .steer-button:active {
+            transform: scale(0.95);
+            background: rgba(255,255,255,0.6);
+        }
+        .speed-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: fixed;
+            bottom: 190px;
+            right: 30px;
+        }
+        .speed-button {
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .speed-button:hover {
+            background: rgba(255,255,255,0.4);
+        }
+        .speed-button:active {
+            transform: scale(0.95);
+            background: rgba(255,255,255,0.6);
+        }
+        /* Modal Styling */
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 40px 60px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 24px;
+            z-index: 10;
+            transition: transform 0.3s ease-in-out;
+            box-shadow: 0 0 20px rgba(255,255,255,0.3);
+        }
+        .modal.show {
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .modal.success {
+            border: 2px solid #00ff00;
+        }
+        .modal.crash {
+            border: 2px solid #ff0000;
+        }
+        .modal button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: #ffffff;
+            color: #000;
+            transition: background 0.2s;
+        }
+        .modal button:hover {
+            background: #dddddd;
+        }
+        @media (max-width: 600px) {
+            .arrow-controls {
+                bottom: 190px;
+                left: 20px;
+                right: 20px;
+                justify-content: space-between;
+            }
+            .steer-controls, .speed-controls {
+                flex-direction: row;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Controls Instructions -->
+<!--     <div id="controls">
+<!--         Controls:<br>
+        Use the on-screen arrows or keyboard arrows to control the vehicle. -->
+    </div> -->
+    <!-- Statistics Panel -->
+    <div class="stats">
+        Simulation Results:<br>
+        Success: <span id="success-rate">0</span>%<br>
+        Pillar Collisions: <span id="pillar-rate">0</span>%<br>
+        Wall Collisions: <span id="wall-rate">0</span>%<br>
+        Total Attempts: <span id="total-attempts">0</span>
+    </div>
+    <!-- HUD -->
+    <div id="hud">
+        <div id="speedometer">
+            <div>SPEED</div>
+            <div class="speed-value">0</div>
+            <div>KM/H</div>
+        </div>
+        <div id="distance">
+            <div>DISTANCE</div>
+            <div class="speed-value" id="dist-value">0</div>
+            <div>M</div>
+        </div>
+    </div>
+    <!-- Arrow Controls -->
+    <div class="arrow-controls">
+        <div class="steer-controls">
+            <button class="steer-button" id="left-button">←</button>
+            <button class="steer-button" id="right-button">→</button>
+        </div>
+    </div>
+    <div class="arrow-controls">
+        <div class="speed-controls">
+            <button class="speed-button" id="up-button">↑</button>
+            <button class="speed-button" id="down-button">↓</button>
+        </div>
+    </div>
+    <!-- Modal for Crash and Success Messages -->
+    <div class="modal" id="message-modal">
+        <div id="modal-message"></div>
+        <button id="close-modal">OK</button>
+    </div>
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Tween.js for Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+    <script>
+        // Constants
+        const TUNNEL_LENGTH = 500;
+        const TUNNEL_WIDTH = 20;
+        const PILLAR_RADIUS = 1;
+        const PILLAR_POSITIONS = [100, 200, 300, 400];
+        const VEHICLE_LENGTH = 5;
+        const VEHICLE_WIDTH = 2;
+        const VEHICLE_HEIGHT = 1.5;
+
+        // Game statistics
+        const gameStats = {
+            totalAttempts: 0,
+            successfulRuns: 0,
+            pillarCollisions: 0,
+            wallCollisions: 0,
+            updateStats() {
+                const total = this.totalAttempts || 1;
+                document.getElementById('success-rate').textContent = 
+                    ((this.successfulRuns / total) * 100).toFixed(1);
+                document.getElementById('pillar-rate').textContent = 
+                    ((this.pillarCollisions / total) * 100).toFixed(1);
+                document.getElementById('wall-rate').textContent = 
+                    ((this.wallCollisions / total) * 100).toFixed(1);
+                document.getElementById('total-attempts').textContent = 
+                    this.totalAttempts;
+            }
+        };
+
+        // Game state
+        const gameState = {
+            speed: 0,
+            maxSpeed: 200,
+            acceleration: 0.5,
+            deceleration: 0.3,
+            steering: 0,
+            maxSteering: 0.05,
+            isRunning: true
+        };
+
+        // Arrow controls state
+        const arrowState = {
+            up: false,
+            down: false,
+            left: false,
+            right: false
+        };
+
+        // Three.js setup
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x000000, 50, 150);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        // Enhanced lighting
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        scene.add(ambientLight);
+
+        // Spotlights along the tunnel
+        for (let x = 0; x < TUNNEL_LENGTH; x += 50) {
+            const spotlight = new THREE.SpotLight(0xffffff, 0.3);
+            spotlight.position.set(x, TUNNEL_WIDTH - 1, 0);
+            spotlight.angle = Math.PI / 4;
+            spotlight.penumbra = 0.1;
+            spotlight.decay = 1;
+            spotlight.distance = 30;
+            spotlight.castShadow = true;
+            scene.add(spotlight);
+        }
+
+        // Car headlights
+        function createHeadlights(vehicle) {
+            const leftLight = new THREE.SpotLight(0xffffff, 1);
+            leftLight.position.set(VEHICLE_LENGTH/2, 1, -VEHICLE_WIDTH/4);
+            leftLight.angle = Math.PI / 6;
+            leftLight.penumbra = 0.1;
+            leftLight.decay = 1;
+            leftLight.distance = 50;
+            vehicle.add(leftLight);
+
+            const rightLight = new THREE.SpotLight(0xffffff, 1);
+            rightLight.position.set(VEHICLE_LENGTH/2, 1, VEHICLE_WIDTH/4);
+            rightLight.angle = Math.PI / 6;
+            rightLight.penumbra = 0.1;
+            rightLight.decay = 1;
+            rightLight.distance = 50;
+            vehicle.add(rightLight);
+        }
+
+        // Create tunnel with enhanced materials
+        function createTunnel() {
+            const tunnelGeometry = new THREE.BoxGeometry(TUNNEL_LENGTH, 0.5, TUNNEL_WIDTH);
+            const tunnelMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x808080,
+                roughness: 0.5,
+                metalness: 0.5
+            });
+            
+            const floor = new THREE.Mesh(tunnelGeometry, tunnelMaterial);
+            floor.position.set(TUNNEL_LENGTH/2, -0.25, 0);
+            floor.receiveShadow = true;
+            scene.add(floor);
+            
+            const ceiling = new THREE.Mesh(tunnelGeometry, tunnelMaterial);
+            ceiling.position.set(TUNNEL_LENGTH/2, TUNNEL_WIDTH, 0);
+            ceiling.receiveShadow = true;
+            scene.add(ceiling);
+            
+            const wallGeometry = new THREE.BoxGeometry(TUNNEL_LENGTH, TUNNEL_WIDTH, 0.5);
+            const leftWall = new THREE.Mesh(wallGeometry, tunnelMaterial);
+            leftWall.position.set(TUNNEL_LENGTH/2, TUNNEL_WIDTH/2, -TUNNEL_WIDTH/2);
+            leftWall.receiveShadow = true;
+            scene.add(leftWall);
+            
+            const rightWall = new THREE.Mesh(wallGeometry, tunnelMaterial);
+            rightWall.position.set(TUNNEL_LENGTH/2, TUNNEL_WIDTH/2, TUNNEL_WIDTH/2);
+            rightWall.receiveShadow = true;
+            scene.add(rightWall);
+
+            // Add reflective stripes
+            const stripeGeometry = new THREE.BoxGeometry(2, 0.1, TUNNEL_WIDTH);
+            const stripeMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xffff00,
+                emissive: 0x666600
+            });
+
+            for (let x = 20; x < TUNNEL_LENGTH; x += 20) {
+                const stripe = new THREE.Mesh(stripeGeometry, stripeMaterial);
+                stripe.position.set(x, 0.1, 0);
+                scene.add(stripe);
+            }
+        }
+
+        // Create pillars with glowing effect
+        function createPillars() {
+            const pillarGeometry = new THREE.CylinderGeometry(PILLAR_RADIUS, PILLAR_RADIUS, TUNNEL_WIDTH, 32);
+            const pillarMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0xff0000,
+                emissive: 0x330000
+            });
+            
+            PILLAR_POSITIONS.forEach(x => {
+                const pillar = new THREE.Mesh(pillarGeometry, pillarMaterial);
+                pillar.position.set(x, TUNNEL_WIDTH/2, 0);
+                pillar.castShadow = true;
+                pillar.receiveShadow = true;
+                scene.add(pillar);
+
+                // Add warning light on top
+                const warningLight = new THREE.PointLight(0xff0000, 0.5);
+                warningLight.position.set(x, TUNNEL_WIDTH - 1, 0);
+                scene.add(warningLight);
+            });
+        }
+
+        // Create vehicle with more detailed geometry
+        function createVehicle() {
+            const vehicleGroup = new THREE.Group();
+
+            // Car body
+            const bodyGeometry = new THREE.BoxGeometry(VEHICLE_LENGTH, VEHICLE_HEIGHT, VEHICLE_WIDTH);
+            const bodyMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x0000ff,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.castShadow = true;
+            body.receiveShadow = true;
+            vehicleGroup.add(body);
+
+            // Wheels
+            const wheelGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16);
+            const wheelMaterial = new THREE.MeshPhongMaterial({ color: 0x202020 });
+            const wheelPositions = [
+                [-1.5, -0.5, -1],
+                [-1.5, -0.5, 1],
+                [1.5, -0.5, -1],
+                [1.5, -0.5, 1]
+            ];
+
+            wheelPositions.forEach(pos => {
+                const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+                wheel.position.set(...pos);
+                wheel.rotation.z = Math.PI / 2;
+                wheel.castShadow = true;
+                vehicleGroup.add(wheel);
+            });
+
+            // Add headlights
+            createHeadlights(vehicleGroup);
+
+            vehicleGroup.position.set(0, VEHICLE_HEIGHT/2 + 0.5, 0);
+            scene.add(vehicleGroup);
+            return vehicleGroup;
+        }
+
+        const vehicle = createVehicle();
+        createTunnel();
+        createPillars();
+
+        // Camera setup
+        camera.position.set(-8, 4, 0);
+        camera.lookAt(vehicle.position);
+
+        // Arrow button event handling
+        const upButton = document.getElementById('up-button');
+        const downButton = document.getElementById('down-button');
+        const leftButton = document.getElementById('left-button');
+        const rightButton = document.getElementById('right-button');
+
+        // Helper functions to handle continuous button presses
+        function handleButtonPress(direction, isPressed) {
+            arrowState[direction] = isPressed;
+        }
+
+        // Event listeners for arrow buttons
+        ['up-button', 'down-button', 'left-button', 'right-button'].forEach(buttonId => {
+            const button = document.getElementById(buttonId);
+            const direction = buttonId.replace('-button', '');
+
+            // Touch events
+            button.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                handleButtonPress(direction, true);
+            }, { passive: false });
+
+            button.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                handleButtonPress(direction, false);
+            }, { passive: false });
+
+            // Mouse events
+            button.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                handleButtonPress(direction, true);
+            });
+
+            button.addEventListener('mouseup', (e) => {
+                e.preventDefault();
+                handleButtonPress(direction, false);
+            });
+
+            button.addEventListener('mouseleave', (e) => {
+                e.preventDefault();
+                handleButtonPress(direction, false);
+            });
+        });
+
+        // Modal Handling
+        const modal = document.getElementById('message-modal');
+        const modalMessage = document.getElementById('modal-message');
+        const closeModalButton = document.getElementById('close-modal');
+
+        function showModal(message, type) {
+            modalMessage.textContent = message;
+            modal.classList.add('show');
+            modal.classList.add(type);
+        }
+
+        function hideModal() {
+            modal.classList.remove('show');
+            modal.classList.remove('success');
+            modal.classList.remove('crash');
+        }
+
+        closeModalButton.addEventListener('click', hideModal);
+
+        // Game reset and collision handling
+        function resetGame() {
+            // Reset vehicle position and rotation
+            vehicle.position.set(0, VEHICLE_HEIGHT/2 + 0.5, 0);
+            vehicle.rotation.set(0, 0, 0);
+            
+            // Reset game state
+            gameState.speed = 0;
+            gameState.steering = 0;
+            gameState.isRunning = true;
+        }
+
+        // Handle collisions
+        function handleCollision(type) {
+            if (!gameState.isRunning) return;
+
+            gameState.isRunning = false;
+            gameStats.totalAttempts += 1;
+
+            if (type === 'wall') {
+                gameStats.wallCollisions += 1;
+                showModal('Crash! Collision with Tunnel Wall!', 'crash');
+            } else if (type === 'pillar') {
+                gameStats.pillarCollisions += 1;
+                showModal('Crash! Collision with Pillar!', 'crash');
+            }
+
+            gameStats.updateStats();
+            resetGame();
+        }
+
+        // Handle successful run
+        function handleSuccess() {
+            if (!gameState.isRunning) return;
+
+            gameState.isRunning = false;
+            gameStats.totalAttempts += 1;
+            gameStats.successfulRuns += 1;
+            showModal('Congratulations! You successfully navigated the tunnel.', 'success');
+
+            gameStats.updateStats();
+            resetGame();
+        }
+
+        // Game loop
+        function updateGame() {
+            if (!gameState.isRunning) return;
+
+            // Handle acceleration
+            if (arrowState.up && gameState.speed < gameState.maxSpeed) {
+                gameState.speed += gameState.acceleration;
+            }
+            if (arrowState.down && gameState.speed > -gameState.maxSpeed/2) {
+                gameState.speed -= gameState.acceleration;
+            }
+            if (!arrowState.up && !arrowState.down) {
+                gameState.speed *= 0.99; // Natural deceleration
+            }
+
+            // Handle steering
+            if (arrowState.left && gameState.steering > -gameState.maxSteering) {
+                gameState.steering -= 0.001;
+            }
+            if (arrowState.right && gameState.steering < gameState.maxSteering) {
+                gameState.steering += 0.001;
+            }
+            if (!arrowState.left && !arrowState.right) {
+                gameState.steering *= 0.95; // Return to center
+            }
+
+            // Update vehicle position
+            vehicle.position.x += gameState.speed * 0.1;
+            vehicle.position.z += gameState.speed * gameState.steering;
+            vehicle.rotation.y = gameState.steering * 10;
+
+            // Update camera
+            camera.position.x = vehicle.position.x - 8;
+            camera.position.z = vehicle.position.z;
+            camera.lookAt(vehicle.position);
+
+            // Update HUD
+            document.querySelector('#speedometer .speed-value').textContent = 
+                Math.abs(Math.round(gameState.speed * 3.6)); // Convert to km/h
+            document.querySelector('#dist-value').textContent = 
+                Math.round(vehicle.position.x);
+
+            // Check for collisions
+            if (Math.abs(vehicle.position.z) >= TUNNEL_WIDTH/2 - VEHICLE_WIDTH/2) {
+                gameState.speed = 0;
+                vehicle.position.z = Math.sign(vehicle.position.z) * (TUNNEL_WIDTH/2 - VEHICLE_WIDTH/2);
+                handleCollision('wall');
+            }
+
+            // Check pillar collisions
+            PILLAR_POSITIONS.forEach(x => {
+                const distance = Math.sqrt(
+                    Math.pow(vehicle.position.x - x, 2) + 
+                    Math.pow(vehicle.position.z, 2)
+                );
+                if (distance < (PILLAR_RADIUS + VEHICLE_WIDTH/2)) {
+                    gameState.speed = 0;
+                    handleCollision('pillar');
+                }
+            });
+
+            // Check for successful run
+            if (vehicle.position.x >= TUNNEL_LENGTH) {
+                handleSuccess();
+            }
+        }
+
+        // Update paparazzi positions
+        function updatePaparazzi() {
+            // Future implementation: Add paparazzi cars that follow the main vehicle
+            // This can include creating additional car models and updating their positions
+            // based on the main vehicle's position to simulate a pursuit.
+        }
+
+        // Keyboard input handling
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key)) {
+                e.preventDefault(); // Prevent scrolling
+                if (key === 'arrowup') arrowState.up = true;
+                if (key === 'arrowdown') arrowState.down = true;
+                if (key === 'arrowleft') arrowState.left = true;
+                if (key === 'arrowright') arrowState.right = true;
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(e.key)) {
+                e.preventDefault(); // Prevent scrolling
+                if (key === 'arrowup') arrowState.up = false;
+                if (key === 'arrowdown') arrowState.down = false;
+                if (key === 'arrowleft') arrowState.left = false;
+                if (key === 'arrowright') arrowState.right = false;
+            }
+        });
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            TWEEN.update(); // Update Tween animations
+            updateGame();
+            updatePaparazzi();
+            renderer.render(scene, camera);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start the animation loop
+        animate();
+    </script>
+</body>
+</html>
